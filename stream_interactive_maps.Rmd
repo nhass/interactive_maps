@@ -1,0 +1,85 @@
+---
+title: "Interactive maps for Study Data"
+author: "Norman Hassell"
+date: "February 18, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Maps of Chemical Data
+
+First we'll load data from previous analyses to avoid re-computation.
+```{r}
+load("C:/Users/Norman/Dropbox/RiverPaper_work/2017_01_08_correction_work/R_projects_for_paper/figure_new_spearman_histograms/.RData")
+```
+
+Then load all necessary packages.
+```{r}
+library(leaflet)
+library(colorRamps)
+library(maps)
+library(rgdal)
+```
+
+Now add columns of relevant metadata to habitat dataframe to allow mapping
+```{r}
+Longitude <- SP13toSP14_20170122_meta$Longitude
+Latitude <- SP13toSP14_20170122_meta$Latitude
+TDN_uM <- SP13toSP14_20170122_meta$TDN_uM
+TDP_uM <- SP13toSP14_20170122_meta$TDP_uM
+Stream_Length_km <- SP13toSP14_20170122_meta$Stream_Length_km
+
+habitat_otu_map <- cbind.data.frame(Longitude, Latitude, TDN_uM, TDP_uM, Stream_Length_km, habitat_otu_tab_ord, stringsAsFactors = F)
+```
+
+First a map of total dissolved phosphorus data.
+```{r}
+habitat_otu_map$season <- factor(habitat_otu_map$season, 
+                                          levels = habitat_otu_map$season, ordered = T)
+
+pal_TDP <- colorNumeric(
+    palette = matlab.like(100),
+    domain = habitat_otu_map$TDP_uM
+)
+
+content_TDP <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "TDP (uM):", habitat_otu_map$TDP_uM)
+
+
+#TDP Map
+leaflet(data = habitat_otu_map) %>% addTiles() %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 3, group = ~season, color = ~pal_TDP(TDP_uM), opacity = 0.8, popup = content_TDP
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_TDP, values = ~TDP_uM,
+              title = paste(sep = "<br/>", "Total", "Dissolved","Phosphorus"), labFormat = labelFormat(suffix = "uM"), opacity = 1)
+
+```
+
+Now the variable of total dissolved nitrogen.
+```{r}
+pal_TDN <- colorNumeric(
+    palette = matlab.like(100),
+    domain = habitat_otu_map$TDN_uM
+)
+
+content_TDN <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "TDN (uM):", habitat_otu_map$TDN_uM)
+
+
+#TDN Map
+leaflet(data = habitat_otu_map) %>% addTiles() %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 3, group = ~season, color = ~pal_TDN(TDN_uM), opacity = 0.8, popup = content_TDN
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_TDN, values = ~TDN_uM,
+              title = paste(sep = "<br/>", "Total", "Dissolved","Nitrogen"), labFormat = labelFormat(suffix = "uM"), opacity = 1)
+
+```
+
+
