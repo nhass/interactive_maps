@@ -22,6 +22,7 @@ library(leaflet)
 library(colorRamps)
 library(maps)
 library(rgdal)
+library(raster)
 ```
 
 Now add columns of relevant metadata to habitat dataframe to allow mapping
@@ -35,8 +36,15 @@ Stream_Length_km <- SP13toSP14_20170122_meta$Stream_Length_km
 habitat_otu_map <- cbind.data.frame(Longitude, Latitude, TDN_uM, TDP_uM, Stream_Length_km, habitat_otu_tab_ord, stringsAsFactors = F)
 ```
 
-First a map of total dissolved phosphorus data.
+Then add shapefile of total watershed area of the study.
 ```{r}
+
+watershed <- shapefile("C:/Users/Norman/Dropbox/new_gis_stream/dissovled_area.shp")
+```
+
+
+First a map of total dissolved phosphorus data.
+```{r, echo=F, warning=F}
 habitat_otu_map$season <- factor(habitat_otu_map$season, 
                                           levels = habitat_otu_map$season, ordered = T)
 
@@ -49,19 +57,24 @@ content_TDP <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
                      habitat_otu_map$Stream_Length_km, "TDP (uM):", habitat_otu_map$TDP_uM)
 
 
+
 #TDP Map
-leaflet(data = habitat_otu_map) %>% addTiles() %>% 
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+addProviderTiles("OpenTopoMap") %>%
     addCircleMarkers(
-        lat = ~ Latitude, lng = ~ Longitude, radius = 3, group = ~season, color = ~pal_TDP(TDP_uM), opacity = 0.8, popup = content_TDP
+        lat = ~ Latitude, lng = ~ Longitude, radius = 2, group = ~season, color = ~pal_TDP(TDP_uM), opacity = 0.8, popup = content_TDP
         ) %>% 
     addLayersControl(overlayGroups = ~season) %>% 
     addLegend("bottomright", pal = pal_TDP, values = ~TDP_uM,
-              title = paste(sep = "<br/>", "Total", "Dissolved","Phosphorus"), labFormat = labelFormat(suffix = "uM"), opacity = 1)
+              title = paste(sep = "<br/>", "Total", "Dissolved","Phosphorus"), labFormat = labelFormat(suffix = " µM"), opacity = 1)
 
 ```
 
 Now the variable of total dissolved nitrogen.
-```{r}
+```{r, echo=F}
 pal_TDN <- colorNumeric(
     palette = matlab.like(100),
     domain = habitat_otu_map$TDN_uM
@@ -72,13 +85,17 @@ content_TDN <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
 
 
 #TDN Map
-leaflet(data = habitat_otu_map) %>% addTiles() %>% 
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
     addCircleMarkers(
-        lat = ~ Latitude, lng = ~ Longitude, radius = 3, group = ~season, color = ~pal_TDN(TDN_uM), opacity = 0.8, popup = content_TDN
+        lat = ~ Latitude, lng = ~ Longitude, radius = 2, group = ~season, color = ~pal_TDN(TDN_uM), opacity = 0.8, popup = content_TDN
         ) %>% 
     addLayersControl(overlayGroups = ~season) %>% 
     addLegend("bottomright", pal = pal_TDN, values = ~TDN_uM,
-              title = paste(sep = "<br/>", "Total", "Dissolved","Nitrogen"), labFormat = labelFormat(suffix = "uM"), opacity = 1)
+              title = paste(sep = "<br/>", "Total", "Dissolved","Nitrogen"), labFormat = labelFormat(suffix = " µM"), opacity = 1)
 
 ```
 
