@@ -1,5 +1,5 @@
 ---
-title: "Interactive maps for Study Data"
+title: "Interactive Maps for Study Data"
 author: "Norman Hassell"
 date: "February 18, 2017"
 output: html_document
@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Maps of Chemical Data
+## Maps of Chemical, Biological, and Physical Data
 
 First we'll load data from previous analyses to avoid re-computation.
 ```{r}
@@ -23,27 +23,46 @@ library(colorRamps)
 library(maps)
 library(rgdal)
 library(raster)
+library(RColorBrewer)
 ```
 
-Now add columns of relevant metadata to habitat dataframe to allow mapping
+Now add columns of relevant metadata to habitat data-frame to allow mapping
 ```{r}
+#load complete metadata csv
+SP13toSP14_meta_complete <- read.csv("/Users/Norman/Dropbox/RiverPaper_work/2017_01_08_correction_work/SP13toSP14_sampleData_02.19.17_complete_nb.csv", stringsAsFactors = F)
+
+#order data
+target <- SP13toSP14_20170122_meta$Sample
+SP13toSP14_meta_complete_ord <- SP13toSP14_meta_complete[match(target, SP13toSP14_meta_complete$Sample),]
+
+#remove uncessary columns
+habitat_otu_tab_ord_ed <- habitat_otu_tab_ord[,-c(11,12)]
+
+#create necessary data columns
 Longitude <- SP13toSP14_20170122_meta$Longitude
 Latitude <- SP13toSP14_20170122_meta$Latitude
 TDN_uM <- SP13toSP14_20170122_meta$TDN_uM
 TDP_uM <- SP13toSP14_20170122_meta$TDP_uM
+Conductivity <- SP13toSP14_meta_complete_ord$Conductivity_us.cm
+Turbidity <- SP13toSP14_meta_complete_ord$Turbidity._NTU
+Nitrates <- SP13toSP14_meta_complete_ord$Nitrates._mg.L
+pH <- SP13toSP14_meta_complete_ord$pH
+E_coli <- SP13toSP14_meta_complete_ord$E_.Coli._CFU.100ml_
+
 Stream_Length_km <- SP13toSP14_20170122_meta$Stream_Length_km
 
-habitat_otu_map <- cbind.data.frame(Longitude, Latitude, TDN_uM, TDP_uM, Stream_Length_km, habitat_otu_tab_ord, stringsAsFactors = F)
+
+habitat_otu_map <- cbind.data.frame(Longitude, Latitude, TDN_uM, TDP_uM, Conductivity, Turbidity, Nitrates, pH, E_coli, Stream_Length_km, habitat_otu_tab_ord_ed, stringsAsFactors = F)
 ```
 
-Then add shapefile of total watershed area of the study.
+Then add shape-file of total watershed area of the study.
 ```{r}
 
 watershed <- shapefile("C:/Users/Norman/Dropbox/new_gis_stream/dissovled_area.shp")
 ```
 
 
-First a map of total dissolved phosphorus data.
+Total dissolved phosphorus:
 ```{r, echo=F, warning=F}
 habitat_otu_map$season <- factor(habitat_otu_map$season, 
                                           levels = habitat_otu_map$season, ordered = T)
@@ -54,7 +73,7 @@ pal_TDP <- colorNumeric(
 )
 
 content_TDP <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
-                     habitat_otu_map$Stream_Length_km, "TDP (uM):", habitat_otu_map$TDP_uM)
+                     habitat_otu_map$Stream_Length_km, "TDP (µM):", habitat_otu_map$TDP_uM)
 
 
 
@@ -65,7 +84,7 @@ leaflet(data = habitat_otu_map) %>%
   ) %>%
 addProviderTiles("OpenTopoMap") %>%
     addCircleMarkers(
-        lat = ~ Latitude, lng = ~ Longitude, radius = 2, group = ~season, color = ~pal_TDP(TDP_uM), opacity = 0.8, popup = content_TDP
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", fillColor = ~pal_TDP(TDP_uM), weight = 1, fillOpacity = 0.8, opacity = 0.8, popup = content_TDP
         ) %>% 
     addLayersControl(overlayGroups = ~season) %>% 
     addLegend("bottomright", pal = pal_TDP, values = ~TDP_uM,
@@ -73,15 +92,15 @@ addProviderTiles("OpenTopoMap") %>%
 
 ```
 
-Now the variable of total dissolved nitrogen.
-```{r, echo=F}
+Total dissolved nitrogen:
+```{r, echo=F, warning=F}
 pal_TDN <- colorNumeric(
     palette = matlab.like(100),
     domain = habitat_otu_map$TDN_uM
 )
 
 content_TDN <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
-                     habitat_otu_map$Stream_Length_km, "TDN (uM):", habitat_otu_map$TDN_uM)
+                     habitat_otu_map$Stream_Length_km, "TDN (µM):", habitat_otu_map$TDN_uM)
 
 
 #TDN Map
@@ -91,7 +110,7 @@ leaflet(data = habitat_otu_map) %>%
   ) %>%
     addProviderTiles("OpenTopoMap") %>% 
     addCircleMarkers(
-        lat = ~ Latitude, lng = ~ Longitude, radius = 2, group = ~season, color = ~pal_TDN(TDN_uM), opacity = 0.8, popup = content_TDN
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", opacity = 0.8, fillColor = ~pal_TDN(TDN_uM), weight = 1, fillOpacity = 0.8, popup = content_TDN
         ) %>% 
     addLayersControl(overlayGroups = ~season) %>% 
     addLegend("bottomright", pal = pal_TDN, values = ~TDN_uM,
@@ -99,4 +118,239 @@ leaflet(data = habitat_otu_map) %>%
 
 ```
 
+Total nitrates.
+```{r, echo=F, warning=F}
+pal_Nitrates <- colorNumeric(
+    palette = matlab.like(100),
+    domain = habitat_otu_map$Nitrates
+)
 
+content_Nitrates <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "Nitrates (mg/L):", habitat_otu_map$Nitrates)
+
+
+#Nitrates Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", fillColor = ~pal_Nitrates(Nitrates), fillOpacity = 0.8, weight = 1, opacity = 0.8, popup = content_Nitrates
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_Nitrates, values = ~Nitrates,
+              title = paste(sep = "<br/>", "Total", "Nitrates"), labFormat = labelFormat(suffix = " mg/L"), opacity = 1)
+
+```
+
+Conductivity.
+```{r, echo=F, warning=F}
+pal_Conductivity <- colorNumeric(
+    palette = matlab.like(100),
+    domain = habitat_otu_map$Conductivity
+)
+
+content_Conductivity <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "Conductivity (µs/cm):", habitat_otu_map$Conductivity)
+
+
+
+#Conductivity Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+addProviderTiles("OpenTopoMap") %>%
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", weight = 1, fillColor = ~pal_Conductivity(Conductivity), fillOpacity = 0.8, opacity = 0.8, popup = content_Conductivity
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_Conductivity, values = ~Conductivity,
+              title = "Conductivity", labFormat = labelFormat(suffix = " µs/cm"), opacity = 1)
+
+```
+
+Sample pH:
+```{r, echo=F, warning=F}
+pal_pH <- colorNumeric(
+    palette = rev(matlab.like(100)),
+    domain = habitat_otu_map$pH
+)
+
+content_pH <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "pH:", habitat_otu_map$pH)
+
+
+#pH Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", weight = 1, fillColor = ~pal_pH(pH), fillOpacity = 0.8, opacity = 0.8, popup = content_pH
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_pH, values = ~pH,
+              title = "Sample pH", labFormat = labelFormat(prefix = "pH "), opacity = 1)
+
+```
+
+Sample *E. coli* counts.
+```{r, echo=F, warning=F}
+pal_E_coli <- colorNumeric(
+    palette = matlab.like(100),
+    domain = habitat_otu_map$E_coli
+)
+
+content_E_coli <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "E. coli (CFU/ml):", habitat_otu_map$E_coli)
+
+
+#E_coli Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", weight = 1, opacity = 0.8, fillOpacity = 0.8, fillColor = ~pal_E_coli(E_coli), popup = content_E_coli
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_E_coli, values = ~E_coli,
+              title = paste(sep = "<br/>", "E. coli", "Counts"), labFormat = labelFormat(suffix = " CFU/ml"), opacity = 1)
+
+```
+
+Cumulative stream site lengths:
+```{r, echo=F, warning=F}
+breaks_flow <- c(1,2,3,4,5,6,7,8,9,10,25,100,250,500,2000)
+breaks <- c(0,1,breaks_flow*2)
+
+colors <- rev(rainbow(length(breaks), end=4/6))
+
+pal_Length <- colorBin(
+    palette = colors, domain = habitat_otu_map$Stream_Length_km, bins = breaks
+)
+
+content_Length <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km)
+
+
+#TDN Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, fillColor = ~pal_Length(Stream_Length_km), color = "black", weight = 1, opacity = 0.8, fillOpacity = 0.8, popup = content_Length
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomleft", pal = pal_Length, values = ~Stream_Length_km,
+              title = paste(sep = "<br/>", "Cumulative", "Stream","Length"), labFormat = labelFormat(suffix = " km"), opacity = 1)
+
+```
+
+##Maps of Sample Community Compososition Data
+
+Community Diversity (Shannon):
+```{r, echo=F, warning=F}
+pal_shannon <- colorNumeric(
+    palette =  rev(brewer.pal(100,"Spectral")), domain = habitat_otu_map$shannon
+)
+
+content_shannon <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "Shannon Div.:", habitat_otu_map$shannon)
+
+
+#TDN Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", opacity = 0.8, fillOpacity = 0.8, weight = 1, fillColor = ~pal_shannon(shannon), popup = content_shannon
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_shannon, values = ~shannon,
+              title = paste(sep = "<br/>", "Community", "Diversity","(Shannon)"), opacity = 1)
+
+```
+
+Fraction of OTUs originating from freshwater:
+```{r, echo=F, warning=F}
+pal_fw_otu_percent <- colorNumeric(
+    palette =  rev(brewer.pal(100,"Spectral")), domain = habitat_otu_map$fw_otu_percent
+)
+
+content_fw_otu_percent <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "Frac. FW OTUs:", habitat_otu_map$fw_otu_percent)
+
+
+#TDN Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", opacity = 0.8, fillOpacity = 0.8, weight = 1, fillColor = ~pal_fw_otu_percent(fw_otu_percent), popup = content_fw_otu_percent
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_fw_otu_percent, values = ~fw_otu_percent,
+              title = paste(sep = "<br/>", "Freshwater", "OTUs"), labFormat = labelFormat(suffix = "%", transform = function(x) 100 * x), opacity = 1)
+
+```
+
+Fraction of OTUs originating from soil:
+```{r, echo=F, warning=F}
+pal_soil_otu_percent <- colorNumeric(
+    palette =  rev(brewer.pal(100,"Spectral")), domain = habitat_otu_map$soil_otu_percent
+)
+
+content_soil_otu_percent <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "Frac. Soil OTUs:", habitat_otu_map$soil_otu_percent)
+
+
+#TDN Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", opacity = 0.8, fillOpacity = 0.8, weight = 1, fillColor = ~pal_soil_otu_percent(soil_otu_percent), popup = content_soil_otu_percent
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_soil_otu_percent, values = ~soil_otu_percent,
+              title = paste(sep = "<br/>", "Soil", "OTUs"), labFormat = labelFormat(suffix = "%", transform = function(x) 100 * x), opacity = 1)
+
+```
+
+Fraction of core OTUs:
+```{r, echo=F, warning=F}
+pal_core_otus <- colorNumeric(
+    palette =  rev(brewer.pal(100,"Spectral")), domain = habitat_otu_map$core_otus
+)
+
+content_core_otus <- paste(sep = "<br/>", habitat_otu_map$samples, "Cum. Len. (km):",
+                     habitat_otu_map$Stream_Length_km, "Frac. Core OTUs:", habitat_otu_map$core_otus)
+
+
+#TDN Map
+leaflet(data = habitat_otu_map) %>%
+  addPolygons(data = watershed,
+    stroke = T, fillColor = "transparent", color = "black", weight = 2
+  ) %>%
+    addProviderTiles("OpenTopoMap") %>% 
+    addCircleMarkers(
+        lat = ~ Latitude, lng = ~ Longitude, radius = 4, group = ~season, color = "black", opacity = 0.8, fillOpacity = 0.8, weight = 1, fillColor = ~pal_core_otus(core_otus), popup = content_core_otus
+        ) %>% 
+    addLayersControl(overlayGroups = ~season) %>% 
+    addLegend("bottomright", pal = pal_core_otus, values = ~core_otus,
+              title = paste(sep = "<br/>", "Core", "OTUs"), labFormat = labelFormat(suffix = "%", transform = function(x) 100 * x), opacity = 1)
+
+```
